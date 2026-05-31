@@ -1,0 +1,74 @@
+{
+  "entities": {
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A financial transaction for a user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "desc": { "type": "string" },
+        "type": { "type": "string", "enum": ["income", "expense"] },
+        "amount": { "type": "number" },
+        "date": { "type": "string" },
+        "cat": { "type": "string" },
+        "createdAt": { "type": "string", "format": "timestamp" }
+      },
+      "required": ["userId", "desc", "type", "amount", "date", "cat", "createdAt"]
+    },
+    "Activity": {
+      "title": "Activity",
+      "description": "An activity log for a user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "action": { "type": "string" },
+        "sub": { "type": "string" },
+        "time": { "type": "string" },
+        "type": { "type": "string", "enum": ["system", "alert", "income", "success"] },
+        "createdAt": { "type": "string", "format": "timestamp" }
+      },
+      "required": ["userId", "action", "sub", "time", "type", "createdAt"]
+    },
+    "Goal": {
+      "title": "Goal",
+      "description": "User monthly savings goal.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "monthlySavingsGoal": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "timestamp" }
+      },
+      "required": ["userId", "monthlySavingsGoal", "updatedAt"]
+    },
+    "Budget": {
+      "title": "Budget",
+      "description": "User category budget limit.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "category": { "type": "string" },
+        "limit": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "timestamp" }
+      },
+      "required": ["userId", "category", "limit", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "transactions/{transactionId}": {
+      "schema": { "$ref": "#/entities/Transaction" },
+      "description": "User transactions."
+    },
+    "activities/{activityId}": {
+      "schema": { "$ref": "#/entities/Activity" },
+      "description": "User activity logs."
+    },
+    "goals/{goalId}": {
+      "schema": { "$ref": "#/entities/Goal" },
+      "description": "User savings goal."
+    },
+    "budgets/{budgetId}": {
+      "schema": { "$ref": "#/entities/Budget" },
+      "description": "User category budget list."
+    }
+  }
+}

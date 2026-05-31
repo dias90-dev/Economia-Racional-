@@ -1,0 +1,124 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} { 
+      allow read, write: if false; 
+    }
+    
+    function isValidId(id) { 
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+    }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isSignedIn() { return request.auth != null && request.auth.token.email_verified == true; }
+    
+    function isValidTransaction(data) {
+      return data.keys().hasOnly(['userId', 'desc', 'type', 'amount', 'date', 'cat', 'createdAt']) &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.desc is string && data.desc.size() <= 500 &&
+             data.type is string && data.type in ['income', 'expense'] &&
+             data.amount is number &&
+             data.date is string && data.date.size() <= 64 &&
+             data.cat is string && data.cat.size() <= 100 &&
+             data.createdAt is timestamp;
+    }
+    
+    function isValidTransactionCreate(data) {
+      return data.keys().hasAll(['userId', 'desc', 'type', 'amount', 'date', 'cat', 'createdAt']) &&
+             data.keys().size() == 7 &&
+             isValidTransaction(data) &&
+             data.userId == request.auth.uid &&
+             data.createdAt == request.time;
+    }
+    
+    function isValidActivity(data) {
+      return data.keys().hasOnly(['userId', 'action', 'sub', 'time', 'type', 'createdAt']) &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.action is string && data.action.size() <= 500 &&
+             data.sub is string && data.sub.size() <= 500 &&
+             data.time is string && data.time.size() <= 64 &&
+             data.type is string && data.type in ['system', 'alert', 'income', 'success'] &&
+             data.createdAt is timestamp;
+    }
+    
+    function isValidActivityCreate(data) {
+      return data.keys().hasAll(['userId', 'action', 'sub', 'time', 'type', 'createdAt']) &&
+             data.keys().size() == 6 &&
+             isValidActivity(data) &&
+             data.userId == request.auth.uid &&
+             data.createdAt == request.time;
+    }
+    
+    function isValidGoal(data) {
+      return data.keys().hasOnly(['userId', 'monthlySavingsGoal', 'updatedAt']) &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.monthlySavingsGoal is number &&
+             data.updatedAt is timestamp;
+    }
+    
+    function isValidGoalCreate(data) {
+      return data.keys().hasAll(['userId', 'monthlySavingsGoal', 'updatedAt']) &&
+             data.keys().size() == 3 &&
+             isValidGoal(data) &&
+             data.userId == request.auth.uid &&
+             data.updatedAt == request.time;
+    }
+    
+    function isValidBudget(data) {
+      return data.keys().hasOnly(['userId', 'category', 'limit', 'updatedAt']) &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.category is string && data.category.size() <= 100 &&
+             data.limit is number &&
+             data.updatedAt is timestamp;
+    }
+    
+    function isValidBudgetCreate(data) {
+      return data.keys().hasAll(['userId', 'category', 'limit', 'updatedAt']) &&
+             data.keys().size() == 4 &&
+             isValidBudget(data) &&
+             data.userId == request.auth.uid &&
+             data.updatedAt == request.time;
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if isSignedIn() && existing().userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(transactionId) && isValidTransactionCreate(incoming());
+      allow update: if isSignedIn() && isValidId(transactionId) && 
+                       existing().userId == request.auth.uid &&
+                       isValidTransaction(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['desc', 'type', 'amount', 'date', 'cat']);
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+    }
+    
+    match /activities/{activityId} {
+      allow read: if isSignedIn() && existing().userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(activityId) && isValidActivityCreate(incoming());
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+      allow update: if false; 
+    }
+    
+    match /goals/{goalId} {
+      allow read: if isSignedIn() && existing().userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(goalId) && isValidGoalCreate(incoming());
+      allow update: if isSignedIn() && isValidId(goalId) && 
+                       existing().userId == request.auth.uid &&
+                       isValidGoal(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().updatedAt == request.time;
+      allow delete: if false;
+    }
+    
+    match /budgets/{budgetId} {
+      allow read: if isSignedIn() && existing().userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(budgetId) && isValidBudgetCreate(incoming());
+      allow update: if isSignedIn() && isValidId(budgetId) && 
+                       existing().userId == request.auth.uid &&
+                       isValidBudget(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().updatedAt == request.time;
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+    }
+  }
+}
